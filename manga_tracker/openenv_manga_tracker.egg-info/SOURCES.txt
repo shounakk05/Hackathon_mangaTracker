@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+./__init__.py
+./client.py
+./grader.py
+./models.py
+openenv_manga_tracker.egg-info/PKG-INFO
+openenv_manga_tracker.egg-info/SOURCES.txt
+openenv_manga_tracker.egg-info/dependency_links.txt
+openenv_manga_tracker.egg-info/entry_points.txt
+openenv_manga_tracker.egg-info/requires.txt
+openenv_manga_tracker.egg-info/top_level.txt
+server/__init__.py
+server/app.py
+server/environment.py

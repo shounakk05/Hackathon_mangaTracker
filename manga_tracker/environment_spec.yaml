@@ -1,0 +1,207 @@
+# MangaTracker Environment Specification
+# This file defines the environment for LLM-based rubric scoring and agent evaluation.
+
+name: MangaTracker
+version: 1.0.0
+description: |
+  A reinforcement learning environment simulating web-scraping task management.
+  The agent maintains a watchlist of manga titles, checking sources for new chapters
+  while avoiding rate limits. This environment tests an agent's ability to balance
+  exploration (checking sources) with constraint satisfaction (avoiding rate limits).
+
+task_definition: |
+  The agent manages a manga watchlist of 10 titles. Each manga has:
+  - A title identifying the series
+  - A 'last_chapter_seen' indicating the most recent chapter the agent processed
+  - A 'latest_available_chapter' indicating the newest chapter available from the source
+  - A 'source_health' status affecting reliability (healthy, degraded, unreliable, down)
+
+  The agent must maximize cumulative reward by:
+  1. Checking sources to discover new chapters (+100 per chapter)
+  2. Avoiding rate-limit errors from excessive requests (-50 per error)
+  3. Updating the database with found chapters (+10 per update)
+  4. Minimizing idle actions which incur small penalties (-1 per idle)
+
+  New chapters are released probabilistically each step based on source health.
+  The 'check_all' action scans all sources simultaneously but has a 30% base chance
+  of triggering rate limiting, increasing with consecutive uses.
+
+episode_configuration:
+  max_steps: 100
+  termination_condition: "Agent completes max_steps or reaches done=True state"
+  reset_behavior: "Watchlist resets to 10 manga with initial chapter counts"
+
+action_space:
+  type: object
+  description: |
+    The action space defines what the agent can do each step. Actions are
+    structured to encourage strategic decision-making about when to check
+    individual sources versus batch checking all sources.
+
+  schema:
+    action_type:
+      type: string
+      enum: [CheckSource, Idle, UpdateDB]
+      description: |
+        The primary action to execute:
+        - CheckSource: Query a manga source for new chapters. Requires specifying
+          either a manga_index (single source) or check_all=true (all sources).
+        - Idle: Skip this step without taking action. Incurs -1 reward penalty
+          to discourage passive behavior.
+        - UpdateDB: Persist discovered chapters to database. Grants +10 reward
+          per manga entry updated. Should be used after finding chapters.
+
+    manga_index:
+      type: integer | null
+      nullable: true
+      minimum: 0
+      maximum: 9
+      description: |
+        Index of the specific manga to check when action_type is CheckSource.
+        Must be between 0 and 9 (inclusive) for the 10 manga in the watchlist.
+        Ignored when check_all is true.
+
+    check_all:
+      type: boolean
+      default: false
+      description: |
+        When true with CheckSource action, queries all 10 manga sources in one step.
+        More efficient than individual checks but carries rate-limit risk:
+        - Base 30% chance of 429 error
+        - +20% probability for each consecutive check_all (capped at +50%)
+        - On rate limit: no chapters found, -50 reward penalty
+
+observation_space:
+  type: object
+  description: |
+    The observation space provides the agent with environment state after each action.
+    It includes both the persistent state (watchlist, counters) and step-specific
+    results (chapters found, rate limit status, reward).
+
+  schema:
+    state:
+      type: object
+      description: Persistent environment state across all steps
+
+      schema:
+        watchlist:
+          type: array
+          items:
+            type: object
+            description: A single manga entry in the watchlist
+
+            schema:
+              title:
+                type: string
+                description: The manga series title (e.g., "One Piece", "Jujutsu Kaisen")
+
+              last_chapter_seen:
+                type: integer
+                description: |
+                  The most recent chapter number the agent has processed for this manga.
+                  Increases when CheckSource successfully finds new chapters.
+
+              latest_available_chapter:
+                type: integer
+                description: |
+                  The newest chapter number currently available from the source.
+                  Increases probabilistically each step based on source_health.
+
+              source_health:
+                type: string
+                enum: [healthy, degraded, unreliable, down]
+                description: |
+                  Current reliability status of the manga source:
+                  - healthy: 30% chapter release chance, 100% check success
+                  - degraded: 15% chapter release chance, 80% check success
+                  - unreliable: 5% chapter release chance, 50% check success
+                  - down: 0% chapter release chance, 0% check success
+
+        total_chapters_found:
+          type: integer
+          description: Cumulative count of all chapters discovered across the episode
+
+        rate_limit_hits:
+          type: integer
+          description: Number of 429 errors encountered (indicates aggressive checking)
+
+        db_updates_count:
+          type: integer
+          description: Total database update operations performed
+
+    action_result:
+      type: string
+      description: Human-readable description of the action outcome
+
+    new_chapters_found:
+      type: integer
+      description: Number of new chapters discovered in this specific step
+
+    rate_limited:
+      type: boolean
+      description: |
+        True if the action triggered a 429 rate-limit error.
+        Occurs only when check_all=true and random chance exceeds threshold.
+
+    reward:
+      type: number
+      description: |
+        Reward calculated for this step based on:
+        +100 * new_chapters_found
+        -50 if rate_limited
+        -1 if action_type was Idle
+        +10 * db_updates_made
+
+    done:
+      type: boolean
+      description: True if the episode has terminated
+
+reward_function:
+  description: |
+    The reward function incentivizes efficient chapter discovery while penalizing
+    rate-limit violations and passive behavior.
+
+  components:
+    - event: "New chapter found"
+      reward: +100
+      rationale: "Primary objective - discovering new content"
+
+    - event: "Rate limit (429 error)"
+      reward: -50
+      rationale: "Penalizes overly aggressive checking behavior"
+
+    - event: "Idle action"
+      reward: -1
+      rationale: "Small penalty to encourage active engagement"
+
+    - event: "Database update"
+      reward: +10
+      rationale: "Rewards persisting discovered chapters"
+
+  optimal_strategy: |
+    The optimal agent balances:
+    1. Regular source checking to catch new chapters
+    2. Strategic use of check_all for efficiency vs. rate-limit risk
+    3. Timely database updates to maximize +10 rewards
+    4. Avoiding consecutive check_all actions to minimize rate limits
+
+evaluation_metrics:
+  - name: "Pass Rate"
+    description: "Percentage of trials with positive cumulative reward"
+    target: ">= 80%"
+
+  - name: "Average Reward"
+    description: "Mean cumulative reward across evaluation trials"
+    target: ">= 15000 over 100 steps"
+
+  - name: "Chapters Found"
+    description: "Average number of chapters discovered per trial"
+    target: ">= 150 chapters"
+
+  - name: "Efficiency Score"
+    description: "Ratio of chapters found to steps taken"
+    target: ">= 1.5 chapters per step"
+
+  - name: "Rate Limit Avoidance"
+    description: "Minimizing 429 errors while maintaining throughput"
+    target: "<= 10 rate limits per 100 steps"
