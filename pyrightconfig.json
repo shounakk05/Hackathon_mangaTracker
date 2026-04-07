@@ -1,5 +1,8 @@
 {
-    "venvPath": "c:\\Users\\CPIN I\\OneDrive\\Desktop\\Hackathon_MangaTracker\\manga_tracker",
+    "venvPath": "c:\\Users\\CPIN I\\OneDrive\\Desktop\\Hackathon_MangaTracker",
     "venv": ".venv",
-    "extraPaths": []
+    "extraPaths": [
+        ".",
+        "c:\\Users\\CPIN I\\OneDrive\\Desktop\\Hackathon_MangaTracker"
+    ]
 }
