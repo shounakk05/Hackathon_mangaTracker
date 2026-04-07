@@ -18,7 +18,7 @@ Reward Function:
 """
 
 import random
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 from openenv.core.env_server.interfaces import Environment
@@ -34,7 +34,7 @@ try:
         SourceHealth,
     )
 except ImportError:
-    from models import (
+    from models import (  # type: ignore
         ActionType,
         MangaEntry,
         MangaTrackerAction,
@@ -283,14 +283,19 @@ class MangaTrackerEnvironment(Environment):
 
         return reward
 
-    def reset(self) -> MangaTrackerObservation:
+    def reset(
+        self,
+        seed: Optional[int] = None,
+        episode_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> MangaTrackerObservation:
         """
         Reset the environment to initial state.
 
         Returns:
             Initial observation with the watchlist ready
         """
-        self._state = State(episode_id=str(uuid4()), step_count=0)
+        self._state = State(episode_id=episode_id or str(uuid4()), step_count=0)
         self._manga_state = MangaTrackerState(
             watchlist=self._initialize_watchlist(),
             total_chapters_found=0,
@@ -308,7 +313,12 @@ class MangaTrackerEnvironment(Environment):
             reward=0.0,
         )
 
-    def step(self, action: MangaTrackerAction) -> MangaTrackerObservation:  # type: ignore[override]
+    def step(
+        self,
+        action: MangaTrackerAction,
+        timeout_s: Optional[float] = None,
+        **kwargs: Any,
+    ) -> MangaTrackerObservation:
         """
         Execute an action in the environment.
 
