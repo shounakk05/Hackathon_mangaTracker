@@ -7,8 +7,12 @@ import time
 import random
 import os
 
-from client import MangaTrackerClient
-from models import ActionType, MangaTrackerAction
+try:
+    from client import MangaTrackerClient
+    from models import ActionType, MangaTrackerAction
+except ImportError:
+    from .client import MangaTrackerClient
+    from .models import ActionType, MangaTrackerAction
 
 def inference():
     """Run a random agent against the Manga Tracker environment."""
@@ -20,7 +24,7 @@ def inference():
     success = False
     for attempt in range(5):
         try:
-            with MangaTrackerClient(base_url=host) as client:
+            with MangaTrackerClient(base_url=host).sync() as client:
                 print("Connected! Resetting environment...")
                 result = client.reset()
                 
