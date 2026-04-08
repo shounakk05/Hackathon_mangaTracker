@@ -3,69 +3,165 @@ Inference script for MangaTracker Environment.
 This standalone script demonstrates how an agent interacts with the environment to satisfy the OpenEnv grader requirements.
 """
 
-import time
-import random
 import os
+import json
+from typing import Optional, List, Dict, Any
 
-from client import MangaTrackerClient  # type: ignore
-from models import ActionType, MangaTrackerAction  # type: ignore
+from openai import OpenAI
+from client import MangaTrackerClient
+from models import ActionType, MangaTrackerAction, MangaTrackerState
 
-def inference():
-    """Run a random agent against the Manga Tracker environment."""
+# Environment variables with defaults
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+
+
+def get_llm_response(client: OpenAI, prompt: str) -> str:
+    """Get response from LLM."""
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant for managing a manga tracker. Help decide the best action to take."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7,
+        max_tokens=200
+    )
+    return response.choices[0].message.content
+
+
+def parse_llm_action(llm_response: str, watchlist_size: int) -> MangaTrackerAction:
+    """Parse LLM response into a MangaTrackerAction."""
     try:
-        # Read OPENENV_HOST from environment variable, default to localhost
+        # Try to parse as JSON first
+        response = llm_response.strip()
+        if response.startswith("```json"):
+            response = response[7:-3].strip()
+        elif response.startswith("```"):
+            response = response[3:-3].strip()
+
+        action_data = json.loads(response)
+        action_type_str = action_data.get("action_type", "IDLE").upper()
+        manga_index = action_data.get("manga_index", 0)
+        check_all = action_data.get("check_all", False)
+
+        # Map string to ActionType enum
+        action_type_map = {
+            "CHECK_SOURCE": ActionType.CHECK_SOURCE,
+            "UPDATE_DB": ActionType.UPDATE_DB,
+            "IDLE": ActionType.IDLE
+        }
+        action_type = action_type_map.get(action_type_str, ActionType.IDLE)
+
+        # Clamp manga_index to valid range
+        manga_index = max(0, min(manga_index, watchlist_size - 1)) if watchlist_size > 0 else 0
+
+        return MangaTrackerAction(
+            action_type=action_type,
+            manga_index=manga_index,
+            check_all=check_all
+        )
+    except (json.JSONDecodeError, KeyError, ValueError):
+        # Fallback to random action if parsing fails
+        import random
+        return MangaTrackerAction(
+            action_type=random.choice([ActionType.CHECK_SOURCE, ActionType.UPDATE_DB, ActionType.IDLE]),
+            manga_index=0 if watchlist_size == 0 else random.randint(0, watchlist_size - 1),
+            check_all=False
+        )
+
+
+def build_prompt(state: MangaTrackerState, step_num: int) -> str:
+    """Build prompt for LLM based on current state."""
+    watchlist_info = []
+    for i, manga in enumerate(state.watchlist[:5]):  # Limit to first 5 for context
+        watchlist_info.append(f"{i}: {manga.title} (Status: {manga.status})")
+
+    prompt = f"""
+Step {step_num}. Current manga watchlist state:
+{chr(10).join(watchlist_info)}
+Total mangas in watchlist: {len(state.watchlist)}
+
+Choose an action. Respond with JSON:
+{{
+    "action_type": "CHECK_SOURCE" | "UPDATE_DB" | "IDLE",
+    "manga_index": <index of manga to act on>,
+    "check_all": <true/false>
+}}
+
+Action types:
+- CHECK_SOURCE: Check for new chapters of a specific manga
+- UPDATE_DB: Update the database with latest chapters
+- IDLE: Do nothing this turn
+"""
+    return prompt
+
+
+def inference() -> None:
+    """Run an LLM-based agent against the Manga Tracker environment."""
+    print("START inference")
+
+    try:
+        # Initialize OpenAI client
+        openai_client = OpenAI(
+            base_url=API_BASE_URL,
+            api_key=HF_TOKEN or os.getenv("OPENAI_API_KEY", "dummy-key")
+        )
+        print(f"START OpenAI client with model={MODEL_NAME}, base_url={API_BASE_URL}")
+
+        # Determine environment host
         host = os.environ.get("OPENENV_HOST", "http://localhost:8000")
-        print(f"Connecting to environment at {host}")
 
-        # Adding retries to give the server time to start up if running in Docker/Grader
-        success = False
-        for attempt in range(5):
-            try:
-                with MangaTrackerClient(base_url=host).sync() as client:
-                    print("Connected! Resetting environment...")
-                    result = client.reset()
+        if LOCAL_IMAGE_NAME:
+            print(f"START environment from Docker image: {LOCAL_IMAGE_NAME}")
+            client_impl = MangaTrackerClient.from_docker_image(LOCAL_IMAGE_NAME)
+        else:
+            print(f"START environment at host: {host}")
+            client_impl = MangaTrackerClient(base_url=host)
 
-                    if not result or not result.observation:
-                        raise ValueError("Failed to retrieve valid observation")
+        with client_impl.sync() as client:
+            print("START reset environment")
+            result = client.reset()
 
-                    watchlist = result.observation.state.watchlist
-                    print(f"Initial watchlist size: {len(watchlist)}")
+            if not result or not result.observation:
+                print("STEP 0 action=RESET status=FAILED error='Failed to retrieve observation'")
+                raise ValueError("Failed to retrieve valid observation")
 
-                    # Take exactly 5 randomized demonstration steps
-                    for step_num in range(5):
-                        action_type = random.choice([ActionType.CHECK_SOURCE, ActionType.UPDATE_DB, ActionType.IDLE])
-                        manga_idx = random.randint(0, len(watchlist) - 1) if watchlist else 0
-                        check_all = random.random() < 0.2
+            watchlist = result.observation.state.watchlist
+            print(f"STEP 0 action=RESET status=SUCCESS watchlist_size={len(watchlist)}")
+            print("END reset environment")
 
-                        action = MangaTrackerAction(
-                            action_type=action_type,
-                            manga_index=manga_idx,
-                            check_all=bool(check_all)
-                        )
+            # Run for 5 demonstration steps
+            num_steps = 5
+            for step_num in range(1, num_steps + 1):
+                state = result.observation.state
 
-                        print(f"Step {step_num + 1}: Executing {action_type.name}...")
-                        result = client.step(action)
-                        print(f"  -> Reward: {result.reward}, New Chapters: {result.observation.new_chapters_found}")
+                # Build prompt and get LLM decision
+                prompt = build_prompt(state, step_num)
+                llm_response = get_llm_response(openai_client, prompt)
 
-                        if result.done:
-                            print("Episode reached terminal state!")
-                            break
+                # Parse action from LLM response
+                action = parse_llm_action(llm_response, len(watchlist))
 
-                        time.sleep(0.5)
+                print(f"STEP {step_num} action={action.action_type.name} manga_index={action.manga_index} check_all={action.check_all}")
 
-                print("\nInference sequence completed successfully.")
-                success = True
-                break
+                # Execute action
+                result = client.step(action)
 
-            except Exception as e:
-                print(f"Failed to connect or execute (attempt {attempt+1}/5): {e}")
-                time.sleep(2)
+                print(f"STEP {step_num} reward={result.reward} new_chapters={result.observation.new_chapters_found} done={result.done}")
 
-        if not success:
-            print("Inference failed after all retries.")
+                if result.done:
+                    print(f"STEP {step_num} status=TERMINAL")
+                    break
+
+            print("END inference status=SUCCESS")
+
     except Exception as e:
-        print(f"Unhandled exception in inference: {e}")
+        print(f"END inference status=FAILED error='{str(e)}'")
         raise
+
 
 if __name__ == "__main__":
     inference()
