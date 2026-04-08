@@ -36,15 +36,15 @@ except Exception as e:  # pragma: no cover
     ) from e
 
 try:
-    from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation
-    from manga_tracker.server.environment import MangaTrackerEnvironment
+    from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation  # type: ignore
+    from manga_tracker.server.environment import MangaTrackerEnvironment  # type: ignore
 except (ModuleNotFoundError, ImportError):
     try:
         from ..models import MangaTrackerAction, MangaTrackerObservation
         from .environment import MangaTrackerEnvironment
     except (ModuleNotFoundError, ImportError):
-        from models import MangaTrackerAction, MangaTrackerObservation
-        from server.environment import MangaTrackerEnvironment
+        from models import MangaTrackerAction, MangaTrackerObservation  # type: ignore
+        from server.environment import MangaTrackerEnvironment  # type: ignore
 
 
 # Create the app with web interface and README integration
