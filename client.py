@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 """Manga Tracker Environment Client."""
-# Updated: 2026-04-08 - Cache bust v2 for grader
+# Updated: 2026-04-08 - CACHE BUST V3 - force grader refresh
 
 from typing import TYPE_CHECKING, Any, Dict
 

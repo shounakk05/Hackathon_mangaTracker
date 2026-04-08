@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uvicorn manga_tracker.server.app:app --host 0.0.0.0 --port 8000)"
+      "Bash(uvicorn manga_tracker.server.app:app --host 0.0.0.0 --port 8000)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(curl -s https://raw.githubusercontent.com/shounakk05/Hackathon_mangaTracker/main/client.py)",
+      "Bash(ls:*)"
     ]
   }
 }
