@@ -1,0 +1,15 @@
+# Pyrefly configuration for Manga Tracker
+
+[errors]
+# Allow try/except imports that are intentional for dual-mode execution
+# (package mode vs. direct script execution)
+ignore = [
+    "missing-import",
+]
+
+[[rules]]
+name = "ignore_missing_imports"
+paths = [
+    "client.py",
+    "__init__.py",
+]
