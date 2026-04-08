@@ -14,12 +14,12 @@ from openenv.core.client_types import StepResult
 from openenv.core.env_server.types import State
 
 if TYPE_CHECKING:
-    from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
+    from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState  # pyrefly: ignore[missing-import]
 else:
     try:
-        from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
+        from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState  # pyrefly: ignore[missing-import]
     except ImportError:
-        from models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
+        from models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState  # pyrefly: ignore[missing-import]
 
 
 class MangaTrackerClient(EnvClient[MangaTrackerAction, MangaTrackerObservation, State]):
