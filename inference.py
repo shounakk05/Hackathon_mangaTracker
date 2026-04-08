@@ -77,7 +77,7 @@ def build_prompt(state: MangaTrackerState, step_num: int) -> str:
     """Build prompt for LLM based on current state."""
     watchlist_info = []
     for i, manga in enumerate(state.watchlist[:5]):  # Limit to first 5 for context
-        watchlist_info.append(f"{i}: {manga.title} (Status: {manga.status})")
+        watchlist_info.append(f"{i}: {manga.title} (Health: {manga.source_health.value})")
 
     prompt = f"""
 Step {step_num}. Current manga watchlist state:
