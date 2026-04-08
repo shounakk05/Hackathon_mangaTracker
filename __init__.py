@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 """Manga Tracker Environment."""
+# Updated: 2026-04-08 - Cache bust v2 for grader
 
 try:
     from manga_tracker.client import MangaTrackerClient
