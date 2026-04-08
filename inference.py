@@ -7,12 +7,8 @@ import time
 import random
 import os
 
-try:
-    from client import MangaTrackerClient
-    from models import ActionType, MangaTrackerAction
-except ImportError:
-    from .client import MangaTrackerClient
-    from .models import ActionType, MangaTrackerAction
+from client import MangaTrackerClient  # type: ignore
+from models import ActionType, MangaTrackerAction  # type: ignore
 
 def inference():
     """Run a random agent against the Manga Tracker environment."""
