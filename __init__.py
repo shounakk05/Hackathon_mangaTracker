@@ -6,15 +6,26 @@
 
 """Manga Tracker Environment."""
 
-from .client import MangaTrackerClient
-from .models import (
-    ActionType,
-    MangaEntry,
-    MangaTrackerAction,
-    MangaTrackerObservation,
-    MangaTrackerState,
-    SourceHealth,
-)
+try:
+    from manga_tracker.client import MangaTrackerClient
+    from manga_tracker.models import (
+        ActionType,
+        MangaEntry,
+        MangaTrackerAction,
+        MangaTrackerObservation,
+        MangaTrackerState,
+        SourceHealth,
+    )
+except ImportError:
+    from client import MangaTrackerClient
+    from models import (
+        ActionType,
+        MangaEntry,
+        MangaTrackerAction,
+        MangaTrackerObservation,
+        MangaTrackerState,
+        SourceHealth,
+    )
 
 __all__ = [
     "MangaTrackerAction",
