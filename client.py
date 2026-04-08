@@ -13,10 +13,7 @@ from openenv.core import EnvClient
 from openenv.core.client_types import StepResult
 from openenv.core.env_server.types import State
 
-try:
-    from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
-except ImportError:
-    from models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
+from models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
 
 
 class MangaTrackerClient(EnvClient[MangaTrackerAction, MangaTrackerObservation, State]):
