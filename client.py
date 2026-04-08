@@ -7,16 +7,19 @@
 """Manga Tracker Environment Client."""
 # Updated: 2026-04-08 - Cache bust for grader
 
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 from openenv.core import EnvClient
 from openenv.core.client_types import StepResult
 from openenv.core.env_server.types import State
 
-try:
+if TYPE_CHECKING:
     from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
-except ImportError:
-    from models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
+else:
+    try:
+        from manga_tracker.models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
+    except ImportError:
+        from models import MangaTrackerAction, MangaTrackerObservation, MangaTrackerState
 
 
 class MangaTrackerClient(EnvClient[MangaTrackerAction, MangaTrackerObservation, State]):
