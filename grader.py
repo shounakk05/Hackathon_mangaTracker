@@ -201,10 +201,6 @@ def run_evaluation(
         
     efficiency_score = max(0.01, min(0.99, normalized_efficiency))
 
-    # Output score in OpenEnv STEP format for parser
-    # Format: [STEP] task_name score action=...
-    print(f"[STEP] MangaTracker_Evaluation {efficiency_score:.6f} action=COMPLETE chapters_found={chapters_found} rate_limits={rate_limit_hits} steps={steps}")
-
     # Determine if agent passed (raw efficiency > 50 and chapters_found > 10)
     passed = raw_efficiency > 50 and chapters_found > 10
 
@@ -340,6 +336,15 @@ def main():
 
     # Print report
     print_report(results)
+
+    # Output single aggregated score for OpenEnv parser
+    # Format: [STEP] task_name score action=...
+    stats = compute_statistics(results)
+    avg_efficiency = stats.get("avg_efficiency", 0.5)
+    # Ensure strictly bounded to (0, 1)
+    avg_efficiency = max(0.01, min(0.99, avg_efficiency))
+    print(f"[STEP] MangaTracker_Evaluation {avg_efficiency:.6f} action=COMPLETE trials={len(results)} pass_rate={stats.get('pass_rate', 0):.2f}")
+    print("[END] MangaTracker_Evaluation")
 
     # Exit with appropriate code
     all_passed = all(r.passed for r in results)
