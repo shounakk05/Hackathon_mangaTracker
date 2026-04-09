@@ -135,11 +135,11 @@ def inference() -> None:
             result = client.reset()
 
             if not result or not result.observation:
-                print("[STEP] 0 score=0.01 action=RESET status=FAILED error='Failed to retrieve observation'")
+                print("[STEP] 0.01 step=0 action=RESET status=FAILED error='Failed to retrieve observation'")
                 raise ValueError("Failed to retrieve valid observation")
 
             watchlist = result.observation.state.watchlist
-            print(f"[STEP] 0 score=0.99 action=RESET status=SUCCESS watchlist_size={len(watchlist)}")
+            print(f"[STEP] 0.99 step=0 action=RESET status=SUCCESS watchlist_size={len(watchlist)}")
             print("[END] reset environment")
 
             # Run for 5 demonstration steps
@@ -157,7 +157,7 @@ def inference() -> None:
                 # Execute action
                 result = client.step(action)
 
-                print(f"[STEP] {step_num} score=0.99 action={action.action_type.name} reward={result.reward} new_chapters={result.observation.new_chapters_found} done={result.done}")
+                print(f"[STEP] 0.99 step={step_num} action={action.action_type.name} reward={result.reward} new_chapters={result.observation.new_chapters_found} done={result.done}")
 
                 if result.done:
                     break
