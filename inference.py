@@ -15,9 +15,6 @@ from models import ActionType, MangaTrackerAction, MangaTrackerState
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN = os.getenv("HF_TOKEN")
-if not HF_TOKEN:
-    raise ValueError("HF_TOKEN is missing. Please add it as a Secret in your Hugging Face space settings.")
-
 
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
@@ -112,6 +109,10 @@ def inference() -> None:
     print("START inference")
 
     try:
+        if not HF_TOKEN:
+            print("WARNING: HF_TOKEN is missing. Please add it as a Secret in your Hugging Face space settings.")
+            raise ValueError("HF_TOKEN is missing.")
+
         # Initialize OpenAI client
         openai_client = OpenAI(
             base_url=API_BASE_URL,
@@ -169,6 +170,8 @@ def inference() -> None:
     except Exception as e:
         print(f"END inference status=FAILED error='{str(e)}'")
         raise
+    finally:
+        print("[END]")
 
 
 if __name__ == "__main__":

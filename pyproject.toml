@@ -43,3 +43,9 @@ server = "manga_tracker.server.app:main"
 include-package-data = true
 packages = ["manga_tracker", "manga_tracker.server"]
 package-dir = { "manga_tracker" = ".", "manga_tracker.server" = "server" }
+
+[tool.pyright]
+include = ["."]
+executionEnvironments = [
+  { root = "." }
+]
