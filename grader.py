@@ -188,12 +188,21 @@ def run_evaluation(
                   f"Chapters={observation.new_chapters_found}, "
                   f"RateLimited={observation.rate_limited}")
 
-    # Calculate efficiency score
-    # Efficiency = (chapters_found * 100 - rate_limit_hits * 50) / steps
-    efficiency_score = (chapters_found * 100 - rate_limit_hits * 50) / max(1, steps)
+    # Calculate efficiency score strictly bounded to (0, 1)
+    
+    raw_efficiency = (chapters_found * 100 - rate_limit_hits * 50) / max(1, steps)
+    
+    # Sigmoid normalization mapped strictly into (0.01, 0.99)
+    import math
+    try:
+        normalized_efficiency = 1.0 / (1.0 + math.exp(-raw_efficiency / 100.0))
+    except OverflowError:
+        normalized_efficiency = 0.99 if raw_efficiency > 0 else 0.01
+        
+    efficiency_score = max(0.01, min(0.99, normalized_efficiency))
 
-    # Determine if agent passed (efficiency > 50 and chapters_found > 10)
-    passed = efficiency_score > 50 and chapters_found > 10
+    # Determine if agent passed (raw efficiency > 50 and chapters_found > 10)
+    passed = raw_efficiency > 50 and chapters_found > 10
 
     return GradingResult(
         total_steps=steps,
