@@ -15,21 +15,29 @@ from models import ActionType, MangaTrackerAction, MangaTrackerState
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN = os.getenv("HF_TOKEN")
+if not HF_TOKEN:
+    raise ValueError("HF_TOKEN is missing. Please add it as a Secret in your Hugging Face space settings.")
+
+
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 
 def get_llm_response(client: OpenAI, prompt: str) -> str:
     """Get response from LLM."""
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant for managing a manga tracker. Help decide the best action to take."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7,
-        max_tokens=200
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant for managing a manga tracker. Help decide the best action to take."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Warning: LLM request failed ({str(e)}), falling back to random action.")
+        return "{}"
 
 
 def parse_llm_action(llm_response: str, watchlist_size: int) -> MangaTrackerAction:
