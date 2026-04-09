@@ -286,6 +286,14 @@ def print_report(results: List[GradingResult]) -> None:
               f"Reward={result.total_reward:.2f}, "
               f"Chapters={result.chapters_found}, "
               f"Efficiency={result.efficiency_score:.2f}")
+              
+        # Output trial as a discrete task for OpenEnv evaluator
+        task_name = f"Evaluation_Trial_{i+1}"
+        trial_score = max(0.01, min(0.99, result.efficiency_score))
+        print(f"[START] {task_name}")
+        print(f"[STEP] {task_name} score={trial_score:.6f} status={status} reward={result.total_reward:.2f}")
+        print(f"[END] {task_name}")
+        
     print("=" * 60)
 
 
@@ -336,15 +344,6 @@ def main():
 
     # Print report
     print_report(results)
-
-    # Output single aggregated score for OpenEnv parser
-    # Format: [STEP] task_name score action=...
-    stats = compute_statistics(results)
-    avg_efficiency = stats.get("avg_efficiency", 0.5)
-    # Ensure strictly bounded to (0, 1)
-    avg_efficiency = max(0.01, min(0.99, avg_efficiency))
-    print(f"[STEP] MangaTracker_Evaluation {avg_efficiency:.6f} action=COMPLETE trials={len(results)} pass_rate={stats.get('pass_rate', 0):.2f}")
-    print("[END] MangaTracker_Evaluation")
 
     # Exit with appropriate code
     all_passed = all(r.passed for r in results)
