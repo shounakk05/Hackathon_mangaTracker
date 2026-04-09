@@ -167,7 +167,7 @@ def inference() -> None:
 
                 # Assign a valid score strictly between 0 and 1
                 step_score = 0.99 if result.reward >= 0 else 0.5
-                print(f"[STEP] {task_name} score={step_score} action={action.action_type.name} reward={result.reward} new_chapters={result.observation.new_chapters_found} done={result.done}")
+                print(f"[STEP] {task_name} score={step_score} action={action.action_type.name} new_chapters={result.observation.new_chapters_found} done={result.done}")
                 print(f"[END] {task_name}")
 
                 if result.done:
