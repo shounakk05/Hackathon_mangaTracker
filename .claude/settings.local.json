@@ -9,7 +9,11 @@
       "Bash(ls:*)",
       "Bash(curl -s \"https://raw.githubusercontent.com/shounakk05/Hackathon_mangaTracker/76cf3c6/client.py\")",
       "Bash(curl -s \"https://api.github.com/repos/shounakk05/Hackathon_mangaTracker/git/refs/heads/main\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(python grader.py --trials 1 --agent simple)",
+      "Bash(python grader.py --trials 3 --agent simple)",
+      "Bash(find 'C:\\\\Users\\\\CPIN I\\\\OneDrive\\\\Desktop\\\\Hackathon_MangaTracker\\\\.venv' -name *.py -path *openenv*)",
+      "Bash(python inference.py)"
     ]
   }
 }
