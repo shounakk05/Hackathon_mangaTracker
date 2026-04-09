@@ -106,7 +106,7 @@ Action types:
 
 def inference() -> None:
     """Run an LLM-based agent against the Manga Tracker environment."""
-    print("[START] inference")
+    print("Starting inference")
 
     try:
         if not HF_TOKEN:
@@ -118,29 +118,32 @@ def inference() -> None:
             base_url=API_BASE_URL,
             api_key=HF_TOKEN or os.getenv("OPENAI_API_KEY", "dummy-key")
         )
-        print(f"[START] OpenAI client with model={MODEL_NAME}, base_url={API_BASE_URL}")
+        print(f"OpenAI client with model={MODEL_NAME}, base_url={API_BASE_URL}")
 
         # Determine environment host
         host = os.environ.get("OPENENV_HOST", "http://localhost:8000")
 
         if LOCAL_IMAGE_NAME:
-            print(f"[START] environment from Docker image: {LOCAL_IMAGE_NAME}")
+            print(f"Environment from Docker image: {LOCAL_IMAGE_NAME}")
             client_impl = MangaTrackerClient.from_docker_image(LOCAL_IMAGE_NAME)
         else:
-            print(f"[START] environment at host: {host}")
+            print(f"Environment at host: {host}")
             client_impl = MangaTrackerClient(base_url=host)
 
         with client_impl.sync() as client:
-            print("[START] reset environment")
+            print("Resetting environment")
+            
+            # Announce official evaluation start
+            print("[START] MangaTrackerTask")
+            
             result = client.reset()
 
             if not result or not result.observation:
-                print("[STEP] 0.01 step=0 action=RESET status=FAILED error='Failed to retrieve observation'")
+                print("[STEP] MangaTrackerTask 0.01 action=RESET status=FAILED error='Failed to retrieve observation'")
                 raise ValueError("Failed to retrieve valid observation")
 
             watchlist = result.observation.state.watchlist
-            print(f"[STEP] 0.99 step=0 action=RESET status=SUCCESS watchlist_size={len(watchlist)}")
-            print("[END] reset environment")
+            print(f"[STEP] MangaTrackerTask 0.99 action=RESET status=SUCCESS watchlist_size={len(watchlist)}")
 
             # Run for 5 demonstration steps
             num_steps = 5
@@ -157,15 +160,15 @@ def inference() -> None:
                 # Execute action
                 result = client.step(action)
 
-                print(f"[STEP] 0.99 step={step_num} action={action.action_type.name} reward={result.reward} new_chapters={result.observation.new_chapters_found} done={result.done}")
+                print(f"[STEP] MangaTrackerTask 0.99 step={step_num} action={action.action_type.name} reward={result.reward} new_chapters={result.observation.new_chapters_found} done={result.done}")
 
                 if result.done:
                     break
 
-            print("[END] inference status=SUCCESS")
+            print("[END] MangaTrackerTask status=SUCCESS")
 
     except Exception as e:
-        print(f"[END] inference status=FAILED error='{str(e)}'")
+        print(f"[END] MangaTrackerTask status=FAILED error='{str(e)}'")
         raise
     finally:
         print("[END]")
