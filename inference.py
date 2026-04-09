@@ -139,12 +139,12 @@ def inference() -> None:
             result = client.reset()
 
             if not result or not result.observation:
-                print("[STEP] Environment_Initialization score=0.01 action=RESET status=FAILED error='Failed to retrieve observation'")
+                print("[STEP] Environment_Initialization score=0.01")
                 print("[END] Environment_Initialization")
                 raise ValueError("Failed to retrieve valid observation")
 
             watchlist = result.observation.state.watchlist
-            print(f"[STEP] Environment_Initialization score=0.99 action=RESET status=SUCCESS watchlist_size={len(watchlist)}")
+            print("[STEP] Environment_Initialization score=0.99")
             print("[END] Environment_Initialization")
 
             # Run for 5 demonstration steps (acts as 5 distinct validation tasks)
@@ -167,7 +167,7 @@ def inference() -> None:
 
                 # Assign a valid score strictly between 0 and 1
                 step_score = 0.99 if result.reward >= 0 else 0.5
-                print(f"[STEP] {task_name} score={step_score} action={action.action_type.name} new_chapters={result.observation.new_chapters_found} done={result.done}")
+                print(f"[STEP] {task_name} score={step_score}")
                 print(f"[END] {task_name}")
 
                 if result.done:

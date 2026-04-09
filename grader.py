@@ -291,7 +291,7 @@ def print_report(results: List[GradingResult]) -> None:
         task_name = f"Evaluation_Trial_{i+1}"
         trial_score = max(0.01, min(0.99, result.efficiency_score))
         print(f"[START] {task_name}")
-        print(f"[STEP] {task_name} score={trial_score:.6f} status={status}")
+        print(f"[STEP] {task_name} score={trial_score:.6f}")
         print(f"[END] {task_name}")
         
     print("=" * 60)
