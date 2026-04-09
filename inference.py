@@ -106,7 +106,7 @@ Action types:
 
 def inference() -> None:
     """Run an LLM-based agent against the Manga Tracker environment."""
-    print("START inference")
+    print("[START] inference")
 
     try:
         if not HF_TOKEN:
@@ -118,29 +118,29 @@ def inference() -> None:
             base_url=API_BASE_URL,
             api_key=HF_TOKEN or os.getenv("OPENAI_API_KEY", "dummy-key")
         )
-        print(f"START OpenAI client with model={MODEL_NAME}, base_url={API_BASE_URL}")
+        print(f"[START] OpenAI client with model={MODEL_NAME}, base_url={API_BASE_URL}")
 
         # Determine environment host
         host = os.environ.get("OPENENV_HOST", "http://localhost:8000")
 
         if LOCAL_IMAGE_NAME:
-            print(f"START environment from Docker image: {LOCAL_IMAGE_NAME}")
+            print(f"[START] environment from Docker image: {LOCAL_IMAGE_NAME}")
             client_impl = MangaTrackerClient.from_docker_image(LOCAL_IMAGE_NAME)
         else:
-            print(f"START environment at host: {host}")
+            print(f"[START] environment at host: {host}")
             client_impl = MangaTrackerClient(base_url=host)
 
         with client_impl.sync() as client:
-            print("START reset environment")
+            print("[START] reset environment")
             result = client.reset()
 
             if not result or not result.observation:
-                print("STEP 0 action=RESET status=FAILED error='Failed to retrieve observation'")
+                print("[STEP] 0 action=RESET status=FAILED error='Failed to retrieve observation'")
                 raise ValueError("Failed to retrieve valid observation")
 
             watchlist = result.observation.state.watchlist
-            print(f"STEP 0 action=RESET status=SUCCESS watchlist_size={len(watchlist)}")
-            print("END reset environment")
+            print(f"[STEP] 0 action=RESET status=SUCCESS watchlist_size={len(watchlist)}")
+            print("[END] reset environment")
 
             # Run for 5 demonstration steps
             num_steps = 5
@@ -154,21 +154,21 @@ def inference() -> None:
                 # Parse action from LLM response
                 action = parse_llm_action(llm_response, len(watchlist))
 
-                print(f"STEP {step_num} action={action.action_type.name} manga_index={action.manga_index} check_all={action.check_all}")
+                print(f"[STEP] {step_num} action={action.action_type.name} manga_index={action.manga_index} check_all={action.check_all}")
 
                 # Execute action
                 result = client.step(action)
 
-                print(f"STEP {step_num} reward={result.reward} new_chapters={result.observation.new_chapters_found} done={result.done}")
+                print(f"[STEP] {step_num} reward={result.reward} new_chapters={result.observation.new_chapters_found} done={result.done}")
 
                 if result.done:
-                    print(f"STEP {step_num} status=TERMINAL")
+                    print(f"[STEP] {step_num} status=TERMINAL")
                     break
 
-            print("END inference status=SUCCESS")
+            print("[END] inference status=SUCCESS")
 
     except Exception as e:
-        print(f"END inference status=FAILED error='{str(e)}'")
+        print(f"[END] inference status=FAILED error='{str(e)}'")
         raise
     finally:
         print("[END]")
