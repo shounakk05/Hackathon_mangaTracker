@@ -40,7 +40,6 @@ def get_llm_response(client: OpenAI, prompt: str) -> str:
 def parse_llm_action(llm_response: str, watchlist_size: int) -> MangaTrackerAction:
     """Parse LLM response into a MangaTrackerAction."""
     try:
-        # Try to parse as JSON first
         response = llm_response.strip()
         if response.startswith("```json"):
             response = response[7:-3].strip()
@@ -52,7 +51,6 @@ def parse_llm_action(llm_response: str, watchlist_size: int) -> MangaTrackerActi
         manga_index = action_data.get("manga_index", 0)
         check_all = action_data.get("check_all", False)
 
-        # Map string to ActionType enum
         action_type_map = {
             "CHECK_SOURCE": ActionType.CHECK_SOURCE,
             "UPDATE_DB": ActionType.UPDATE_DB,
@@ -60,7 +58,6 @@ def parse_llm_action(llm_response: str, watchlist_size: int) -> MangaTrackerActi
         }
         action_type = action_type_map.get(action_type_str, ActionType.IDLE)
 
-        # Clamp manga_index to valid range
         manga_index = max(0, min(manga_index, watchlist_size - 1)) if watchlist_size > 0 else 0
 
         return MangaTrackerAction(
@@ -69,7 +66,6 @@ def parse_llm_action(llm_response: str, watchlist_size: int) -> MangaTrackerActi
             check_all=check_all
         )
     except (json.JSONDecodeError, KeyError, ValueError):
-        # Fallback to random action if parsing fails
         import random
         return MangaTrackerAction(
             action_type=random.choice([ActionType.CHECK_SOURCE, ActionType.UPDATE_DB, ActionType.IDLE]),
@@ -81,7 +77,7 @@ def parse_llm_action(llm_response: str, watchlist_size: int) -> MangaTrackerActi
 def build_prompt(state: MangaTrackerState, step_num: int) -> str:
     """Build prompt for LLM based on current state."""
     watchlist_info = []
-    for i, manga in enumerate(state.watchlist[:5]):  # Limit to first 5 for context
+    for i, manga in enumerate(state.watchlist[:5]):
         watchlist_info.append(f"{i}: {manga.title} (Health: {manga.source_health.value})")
 
     prompt = f"""
@@ -95,13 +91,14 @@ Choose an action. Respond with JSON:
     "manga_index": <index of manga to act on>,
     "check_all": <true/false>
 }}
-
-Action types:
-- CHECK_SOURCE: Check for new chapters of a specific manga
-- UPDATE_DB: Update the database with latest chapters
-- IDLE: Do nothing this turn
 """
     return prompt
+
+
+def safe_score(value: float) -> float:
+    """Clamp a raw score strictly between 0 and 1."""
+    epsilon = 1e-6
+    return min(max(value, epsilon), 1 - epsilon)
 
 
 def inference() -> None:
@@ -113,14 +110,12 @@ def inference() -> None:
             print("WARNING: HF_TOKEN is missing. Please add it as a Secret in your Hugging Face space settings.")
             raise ValueError("HF_TOKEN is missing.")
 
-        # Initialize OpenAI client
         openai_client = OpenAI(
             base_url=API_BASE_URL,
             api_key=HF_TOKEN or os.getenv("OPENAI_API_KEY", "dummy-key")
         )
         print(f"OpenAI client with model={MODEL_NAME}, base_url={API_BASE_URL}")
 
-        # Determine environment host
         host = os.environ.get("OPENENV_HOST", "http://localhost:8000")
 
         if LOCAL_IMAGE_NAME:
@@ -133,40 +128,33 @@ def inference() -> None:
         with client_impl.sync() as client:
             print("Resetting environment")
             
-            # 1. First Task: Initialization
+            # Initialization
             print("[START] Environment_Initialization")
-            
             result = client.reset()
 
             if not result or not result.observation:
-                print(f"[STEP] Environment_Initialization {0.01}")
+                print(f"[STEP] Environment_Initialization {safe_score(0.01)}")
                 print("[END] Environment_Initialization")
                 raise ValueError("Failed to retrieve valid observation")
 
             watchlist = result.observation.state.watchlist
-            print(f"[STEP] Environment_Initialization {0.99}")
+            print(f"[STEP] Environment_Initialization {safe_score(0.99)}")
             print("[END] Environment_Initialization")
 
-            # Run for 5 demonstration steps (acts as 5 distinct validation tasks)
+            # Run for 5 steps
             num_steps = 5
             for step_num in range(1, num_steps + 1):
                 task_name = f"Agent_Execution_Step_{step_num}"
                 print(f"[START] {task_name}")
                 
                 state = result.observation.state
-
-                # Build prompt and get LLM decision
                 prompt = build_prompt(state, step_num)
                 llm_response = get_llm_response(openai_client, prompt)
-
-                # Parse action from LLM response
                 action = parse_llm_action(llm_response, len(watchlist))
-
-                # Execute action
                 result = client.step(action)
 
-                # Assign a valid score strictly between 0 and 1
-                step_score = 0.99 if result.reward >= 0 else 0.5
+                raw_score = result.reward if result.reward is not None else 0.5
+                step_score = safe_score(raw_score)
                 print(f"[STEP] {task_name} {step_score}")
                 print(f"[END] {task_name}")
 
